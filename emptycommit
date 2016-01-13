@@ -1,0 +1,173 @@
+require 'test/unit'
+require 'selenium-webdriver'
+
+class AllTests < Test::Unit::TestCase
+
+  def setup
+    @browser = Selenium::WebDriver.for :firefox
+  end
+
+  def teardown
+    @browser.quit
+  end
+
+  def go_to_home_page
+    @browser.get 'http://demo.redmine.org'
+    wait = Selenium::WebDriver::Wait.new(:timeout => 7)
+    wait.until { @browser.find_element(:class => 'login') }
+  end
+
+  def register_user(login, password)
+    @browser.find_element(:class, 'register').click
+    @browser.find_element(:id, 'user_login').send_keys login
+    @browser.find_element(:id, 'user_password').send_keys password
+    @browser.find_element(:id, 'user_password_confirmation').send_keys password
+    @browser.find_element(:id, 'user_firstname').send_keys 'nilnil'
+    @browser.find_element(:id, 'user_lastname').send_keys 'nilnil'
+    @browser.find_element(:id, 'user_mail').send_keys login + '@dfdfd.dfd'
+    @browser.find_element(:name, 'commit').click
+  end
+
+  def login_user(login = 'n000.vitkovskaya@gmail.com', password = 'nilnil')
+    @browser.find_element(:class, 'login').click
+    @browser.find_element(:id, 'username').send_keys login
+    @browser.find_element(:id, 'password').send_keys password
+    @browser.find_element(:name, 'login').click
+  end
+
+  def create_project
+    @browser.find_element(:class, 'projects').click
+    @browser.find_element(:class, 'icon-add').click
+    @browser.find_element(:id, 'project_name').send_keys rand(999).to_s + 'nvit'
+    @browser.find_element(:id, 'project_description').send_keys rand(999).to_s + 'MeinProject'
+    @browser.find_element(:id, 'project_identifier').send_keys 'nina' + rand(36**10).to_s(36)
+    @browser.find_element(:name, 'commit').click
+  end
+
+
+  def test_positive_registration
+    go_to_home_page
+    login = rand(999).to_s + 'login'
+    register_user login, 'nilnil'
+
+    expected = 'Your account has been activated. You can now log in.'
+    assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+  end
+
+  def test_login_logout
+    go_to_home_page
+    login_user
+    @browser.find_element(:class, 'logout').click
+    expected = 'Sign in'
+    assert_equal(expected, @browser.find_element(:class, 'login').text)
+  end
+
+  def test_logged_as
+    go_to_home_page
+    login_user
+    expected = 'n000.vitkovskaya@gmail.com'
+    assert_equal(expected, @browser.find_element(:class, 'user').text)
+    @browser.find_element(:class, 'logout').click
+  end
+
+  def test_change_password
+      go_to_home_page
+      login = rand(999).to_s + 'login'
+      register_user login, 'nilnil'
+      @browser.find_element(:class, 'my-account').click
+      @browser.find_element(:class, 'icon-passwd').click
+      @browser.find_element(:id, 'password').send_keys 'nilnil'
+      @browser.find_element(:id, 'new_password').send_keys 'nilnil2'
+      @browser.find_element(:id, 'new_password_confirmation').send_keys 'nilnil2'
+
+      @browser.find_element(:name, 'commit').click
+      expected = 'Password was successfully updated.'
+      assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+      @browser.find_element(:class, 'logout').click
+  end
+
+  def test_create_project
+    go_to_home_page
+    login_user
+    @browser.find_element(:class, 'projects').click
+    @browser.find_element(:class, 'icon-add').click
+    @browser.find_element(:id, 'project_name').send_keys rand(999).to_s + 'nvit'
+    @browser.find_element(:id, 'project_description').send_keys rand(999).to_s + 'MeinProject'
+    @browser.find_element(:id, 'project_identifier').send_keys 'nina' + rand(36**10).to_s(36)
+    @browser.find_element(:name, 'commit').click
+    expected = 'Successful creation.'
+    assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+  end
+
+
+  def test_create_project_version
+    go_to_home_page
+    login_user
+    create_project
+    @browser.find_element(:id, 'tab-versions').click
+    wait = Selenium::WebDriver::Wait.new(:timeout => 15)
+    wait.until { @browser.find_element(:css => '#tab-content-versions a.icon-add') }
+    @browser.find_element(:css, '#tab-content-versions a.icon-add').click
+    #@browser.find_element(:xpath, '//*[@id="tab-content-versions"]/p[2]/a').click
+    @browser.find_element(:id, 'version_name').send_keys rand(999).to_s + 'nvit'
+    @browser.find_element(:id, 'version_description').send_keys rand(999).to_s + 'MeinVersion'
+    @browser.find_element(:name, 'commit').click
+    expected = 'Successful creation.'
+    assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+  end
+
+  def test_add_user_to_project
+    go_to_home_page
+    login_user
+    create_project
+    @browser.find_element(:id, 'tab-members').click
+    @browser.find_element(:css, '#tab-content-members a.icon-add').click
+    wait = Selenium::WebDriver::Wait.new(:timeout => 15)
+    wait.until { @browser.find_element(:id => 'principal_search') }
+    @browser.find_element(:id, 'principal_search').send_keys 'alicefromwonderland'
+    #@browser.find_element(:css, '#principals input[type="checkbox"]').click
+    #@browser.find_element(:css, '#principals > label > input[type="checkbox"]').click
+    #@browser.find_element(:name, 'membership[user_ids][]').click
+    #@browser.find_element(:cb, 132558).click
+    @browser.find_element(:value, ' alicefromwonderland alicefromwonderland')
+    wait = Selenium::WebDriver::Wait.new(:timeout => 15)
+    wait.until { @browser.find_element(:value=> ' alicefromwonderland alicefromwonderland') }
+    @browser.find_element(:name=> 'membership[user_ids][]').click
+    @browser.find_element(:value, 3).click
+    @browser.find_element(:id, 'member-add-submit').click
+    expected = 'Successful creation.'
+    assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+  end
+
+  def test_edit_user_role
+    go_to_home_page
+    login_user
+    create_project
+    @browser.find_element(:id, 'tab-members').click
+    @browser.find_element(:css, '#tab-content-members a.icon-add').click
+    wait = Selenium::WebDriver::Wait.new(:timeout => 15)
+    wait.until { @browser.find_element(:id => 'principal_search') }
+    @browser.find_element(:id, 'principal_search').send_keys 'alicefromwonderland'
+    @browser.find_element(:css, '#principals input[type="checkbox"]').click
+    @browser.find_element(:value, '3').click
+    @browser.find_element(:id, 'member-add-submit').click
+    expected = ''
+    assert_equal()
+  end
+
+  def test_create_issues
+    go_to_home_page
+    login_user
+    create_project
+    @browser.find_element(:class, 'new-issue').click
+    #no idea how to select issue type
+    @browser.find_element(:id, 'issue-subject').send_keys 'firstbug'
+    @browser.find_element(:id, 'issue-description').send_keys 'This is a first bug.'
+    #no idea how to select priority
+    @browser.find_element(:name, 'commit').click
+    expected = 'Issue '#flash_notice > a' created.'
+    assert_equal(expected, @browser.find_element(:id, 'flash_notice').text)
+  end
+
+end
+
